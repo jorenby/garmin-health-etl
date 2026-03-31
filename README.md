@@ -12,6 +12,14 @@ garmin ... -> structured export file -> garmin-health-etl import-json -> garmin-
 
 Use `uv` as the primary workflow.
 
+Install `uv` first if it is not already available:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then set up the project:
+
 ```bash
 uv python install 3.12
 uv sync
