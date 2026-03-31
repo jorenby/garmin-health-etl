@@ -1,0 +1,2 @@
+# Legacy fallback for pip-based environments.
+-e .

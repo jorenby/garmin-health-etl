@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "garmin-health-etl"
+version = "0.1.0"
+description = "CLI for importing, storing, and exporting Garmin health data"
+requires-python = ">=3.7"
+dependencies = []
+
+[project.scripts]
+garmin-health-etl = "garmin_health_etl.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true
