@@ -1,16 +1,29 @@
 # Garmin Health ETL
 
-`garmin-health-etl` is a small Python CLI for storing normalized Garmin health records in SQLite and exporting them to PSV.
+A small, tested Python CLI that imports normalized Garmin health records into SQLite and exports them to PSV (pipe-separated values) for analysis.
 
-The repo now treats `garmin-cli` as an external upstream tool. The intended flow is:
+It treats `garmin-cli` as an external upstream tool, keeping data collection cleanly separated from storage and export. The intended flow is:
 
 ```text
-garmin ... -> structured export file -> garmin-health-etl import-json -> garmin-health-etl export-psv
+garmin ...  ->  structured export file  ->  garmin-health-etl import-json  ->  garmin-health-etl export-psv
+```
+
+## Why this exists
+
+I track my own sleep, HRV, resting heart rate, and recovery to look for patterns over time. This tool gives me a stable, queryable store for that data instead of one-off CSV scrapes — normalized records in SQLite, reproducible PSV exports, and a clear boundary between the upstream collector and my own pipeline.
+
+## Project layout
+
+```text
+src/garmin_health_etl/   # package: CLI, importer, exporter, storage
+tests/                   # unittest suite
+garmin_etl.py            # legacy compatibility shim
+pyproject.toml           # project + entrypoint definition
 ```
 
 ## Install
 
-Use `uv` as the primary workflow.
+Use [`uv`](https://docs.astral.sh/uv/) as the primary workflow.
 
 Install `uv` first if it is not already available:
 
@@ -25,27 +38,17 @@ uv python install 3.12
 uv sync
 ```
 
-The repo pins local development to Python `3.12` via [`.python-version`](/Users/joshuajorenby/code/garmin-health-etl/.python-version). `uv sync` then creates a local virtual environment and installs the `garmin-health-etl` entrypoint from [`pyproject.toml`](/Users/joshuajorenby/code/garmin-health-etl/pyproject.toml).
+The repo pins local development to Python `3.12` via [`.python-version`](.python-version). `uv sync` creates a local virtual environment and installs the `garmin-health-etl` entrypoint defined in [`pyproject.toml`](pyproject.toml).
 
-Then run commands through `uv`:
+Run commands through `uv`:
 
 ```bash
 uv run garmin-health-etl --help
 ```
 
-If you need a legacy fallback, `python -m pip install -e .` still works.
-
-If you want a lockfile after installing `uv`, run:
-
-```bash
-uv lock
-```
-
-Commit [`uv.lock`](/Users/joshuajorenby/code/garmin-health-etl/uv.lock) once it exists. It should be versioned for a stable developer environment.
+If you need a legacy fallback, `python -m pip install -e .` still works. To regenerate the lockfile, run `uv lock` and commit [`uv.lock`](uv.lock) for a stable developer environment.
 
 ## Test
-
-Run the built-in test suite with:
 
 ```bash
 uv run python -m unittest discover -s tests -v
@@ -53,7 +56,7 @@ uv run python -m unittest discover -s tests -v
 
 ## Commands
 
-### Import normalized JSON or NDJSON
+### `import-json` — import normalized JSON or NDJSON
 
 The importer accepts:
 
@@ -62,9 +65,7 @@ The importer accepts:
 - A JSON object with a top-level `records` array
 - NDJSON where each line is one record object
 
-Supported normalized fields map directly to the `garmin_data` schema:
-`date`, `bed_time`, `wake_time`, `sleep_score`, `hrv_avg`, `rhr`,
-`body_battery_recharge`, `wake_ups`, `restlessness_score`
+Supported normalized fields map directly to the `garmin_data` schema: `date`, `bed_time`, `wake_time`, `sleep_score`, `hrv_avg`, `rhr`, `body_battery_recharge`, `wake_ups`, `restlessness_score`.
 
 ```bash
 uv run garmin-health-etl import-json \
@@ -73,9 +74,9 @@ uv run garmin-health-etl import-json \
   --source garmin-cli
 ```
 
-### Export PSV
+### `export-psv` — export to PSV
 
-This preserves the existing PSV header and column order from the legacy script.
+Preserves the existing PSV header and column order from the legacy script.
 
 ```bash
 uv run garmin-health-etl export-psv \
@@ -83,16 +84,16 @@ uv run garmin-health-etl export-psv \
   --output garmin_data.psv
 ```
 
-### Show a summary
+### `summary` — show a summary
 
 ```bash
 uv run garmin-health-etl summary --db garmin_health.db --format text
 uv run garmin-health-etl summary --db garmin_health.db --format json
 ```
 
-### Invoke an upstream tool
+### `upstream` — invoke an upstream tool
 
-`upstream` runs an external command as a subprocess boundary and can save stdout without parsing the upstream tool.
+Runs an external command as a subprocess boundary and can save its stdout without parsing the upstream tool's output.
 
 ```bash
 uv run garmin-health-etl upstream --output export.json -- garmin export sleep --format json
@@ -100,20 +101,18 @@ uv run garmin-health-etl upstream --output export.json -- garmin export sleep --
 
 If you omit `--output`, stdout is passed through directly.
 
-## Legacy Wrapper
+## Legacy wrapper
 
-[`garmin_etl.py`](/Users/joshuajorenby/code/garmin-health-etl/garmin_etl.py) is now only a compatibility shim. It no longer prompts for credentials or dates. Use it as:
+[`garmin_etl.py`](garmin_etl.py) is now only a compatibility shim. It no longer prompts for credentials or dates:
 
 ```bash
 uv run python garmin_etl.py summary --db garmin_health.db
 ```
 
-## Storage Contract
+## Storage contract
 
-The SQLite schema still creates and preserves:
+The SQLite schema creates and preserves three tables:
 
-- `garmin_data`
+- `garmin_data` — primary storage table; `export-psv` reads from here
 - `manual_tracking`
 - `collection_log`
-
-`garmin_data` remains the primary storage table, and `export-psv` reads from that table.
