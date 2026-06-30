@@ -75,7 +75,7 @@ class CLITests(unittest.TestCase):
                 )
 
             self.assertEqual(0, exit_code)
-            self.assertIn("Imported 1 records", import_buffer.getvalue())
+            self.assertIn("Imported 1 garmin_data", import_buffer.getvalue())
 
             summary_buffer = io.StringIO()
             with redirect_stdout(summary_buffer):

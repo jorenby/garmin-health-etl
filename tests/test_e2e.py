@@ -68,7 +68,7 @@ class EndToEndCLITests(unittest.TestCase):
             )
 
             self.assertEqual(0, import_result.returncode, import_result.stderr)
-            self.assertIn("Imported 1 records", import_result.stdout)
+            self.assertIn("Imported 1 garmin_data", import_result.stdout)
 
             summary_result = subprocess.run(
                 [
