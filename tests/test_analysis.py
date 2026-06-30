@@ -68,6 +68,34 @@ class AnalysisTests(unittest.TestCase):
             self.assertIn("Same-day correlations", text)
             self.assertTrue(list((Path(tmp) / "charts").glob("*.png")))
 
+    def test_report_command_imports_and_analyzes(self):
+        from garmin_health_etl import cli
+        from garmin_health_etl.sample_data import write_sample
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            write_sample(tmp_path, days=60, seed=9)
+            exit_code = cli.main(
+                [
+                    "report",
+                    "--db",
+                    str(tmp_path / "h.db"),
+                    "--garmin",
+                    str(tmp_path / "sample_garmin.json"),
+                    "--tracker",
+                    str(tmp_path / "sample_tracker.csv"),
+                    "--output",
+                    str(tmp_path / "report.md"),
+                    "--charts-dir",
+                    str(tmp_path / "charts"),
+                ]
+            )
+            self.assertEqual(0, exit_code)
+            self.assertIn(
+                "Same-day correlations",
+                (tmp_path / "report.md").read_text(encoding="utf-8"),
+            )
+
     def test_empty_db_produces_graceful_report(self):
         from garmin_health_etl.analysis import run_analysis
 

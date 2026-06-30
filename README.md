@@ -53,17 +53,32 @@ uv sync --extra analysis     # + analysis/charts (pandas, numpy, matplotlib)
 uv sync --extra dev          # everything + ruff (for development)
 ```
 
-## Try it with synthetic data (no account needed)
+## Quick start — the happy path
+
+One command does the whole loop (import what you have, join, analyze). No Garmin
+account needed for the demo — it runs on synthetic data:
 
 ```bash
 uv sync --extra analysis
-uv run garmin-health-etl generate-sample --output-dir sample --days 120
-uv run garmin-health-etl import-json    --input sample/sample_garmin.json --db health.db --source sample
-uv run garmin-health-etl import-tracker --input sample/sample_tracker.csv --db health.db
-uv run garmin-health-etl analyze        --db health.db --output report.md
+uv run --extra analysis garmin-health-etl generate-sample --output-dir sample
+uv run --extra analysis garmin-health-etl report \
+    --db health.db --garmin sample/sample_garmin.json --tracker sample/sample_tracker.csv
+# -> writes report.md + charts/
 ```
 
-## Commands
+With **your own data**, swap in your two files:
+
+```bash
+# export.json comes from `extract` (see "Auth & rate limits" below);
+# tracker.csv is your Daily Health Tracker Form responses, downloaded as CSV.
+uv run --extra analysis garmin-health-etl report \
+    --db health.db --garmin export.json --tracker tracker.csv
+```
+
+That's it. Everything below is the individual steps `report` wraps, plus advanced
+options — reach for them only if you want to run a stage on its own.
+
+## Individual commands (what `report` wraps)
 
 ### `extract` — pull from Garmin Connect
 
@@ -75,7 +90,7 @@ never crashes because a given watch didn't report something.
 ```bash
 export GARMIN_EMAIL="you@example.com"
 export GARMIN_PASSWORD="..."
-uv run garmin-health-etl extract --start 2026-01-01 --end 2026-03-31 --output export.json
+uv run --extra garmin garmin-health-etl extract --start 2026-01-01 --end 2026-03-31 --output export.json
 ```
 
 **Auth & rate limits.** Garmin rate-limits its login endpoint by IP and returns
@@ -88,7 +103,7 @@ uv run python -c "import garth; garth.login('you@example.com','PASSWORD'); garth
 
 # then point the extractor at the cache — no fresh login, no 429
 export GARMINTOKENS="$HOME/.garminconnect"
-uv run garmin-health-etl extract --start 2026-01-01 --end 2026-03-31 --output export.json
+uv run --extra garmin garmin-health-etl extract --start 2026-01-01 --end 2026-03-31 --output export.json
 ```
 
 If you do hit a 429, wait ~15–60 minutes before retrying; repeated attempts reset
@@ -122,7 +137,7 @@ permutation-based p-value, first-half/second-half trends, a peak-HRV
 natural-experiment window, and overnight SpO2 flag counts → markdown + charts.
 
 ```bash
-uv run garmin-health-etl analyze --db health.db --output report.md
+uv run --extra analysis garmin-health-etl analyze --db health.db --output report.md
 ```
 
 ### `export-psv` / `export-csv` / `summary`

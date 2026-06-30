@@ -16,6 +16,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="garmin-health-etl")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    # -- report (happy path: import what you have, then analyze) ------------- #
+    report_parser = subparsers.add_parser(
+        "report",
+        help="One-shot: import Garmin JSON and/or tracker CSV, then write the report",
+    )
+    report_parser.add_argument("--db", required=True, help="SQLite database path")
+    report_parser.add_argument(
+        "--garmin", help="Garmin JSON to import first (from `extract`)"
+    )
+    report_parser.add_argument(
+        "--tracker", help="Daily Health Tracker CSV to import first"
+    )
+    report_parser.add_argument(
+        "--output", default="report.md", help="Markdown report path"
+    )
+    report_parser.add_argument("--charts-dir", help="Directory for chart PNGs")
+    report_parser.add_argument(
+        "--no-charts", action="store_true", help="Skip chart generation"
+    )
+    report_parser.set_defaults(handler=handle_report)
+
     # -- extract ------------------------------------------------------------- #
     extract_parser = subparsers.add_parser(
         "extract",
@@ -136,6 +157,44 @@ def build_parser() -> argparse.ArgumentParser:
     upstream_parser.set_defaults(handler=handle_upstream)
 
     return parser
+
+
+def handle_report(args: argparse.Namespace) -> int:
+    from .analysis import run_analysis
+
+    store = SQLiteStore(args.db)
+    store.initialize()
+
+    if args.garmin:
+        payload = load_payload(args.garmin)
+        g = store.upsert_garmin_data(payload["garmin_data"])
+        a = store.upsert_activities(payload["activities"])
+        m = store.upsert_manual_tracking(payload["manual_tracking"])
+        store.log_collection(date="bulk-import", data_type="report:garmin", success=True)
+        print(f"Imported {g} garmin_data, {a} activities, {m} manual_tracking")
+
+    if args.tracker:
+        from .tracker import load_tracker_csv
+
+        records = load_tracker_csv(args.tracker)
+        m = store.upsert_manual_tracking(records)
+        store.log_collection(date="bulk-import", data_type="report:tracker", success=True)
+        print(f"Imported {m} manual_tracking rows from tracker")
+
+    report_path = run_analysis(
+        store,
+        output_path=args.output,
+        charts_dir=args.charts_dir,
+        make_charts=not args.no_charts,
+    )
+    summary = store.summary()
+    start, end = summary.date_range
+    print(
+        f"Analyzed {summary.total_records} days ({start or '-'} to {end or '-'}), "
+        f"{summary.manual_tracking_count} with a subjective log."
+    )
+    print(f"Report: {report_path}")
+    return 0
 
 
 def handle_extract(args: argparse.Namespace) -> int:
