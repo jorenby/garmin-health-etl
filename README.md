@@ -1,9 +1,11 @@
 # Garmin Health ETL
 
-A small, tested Python toolkit that **pulls my Garmin data, joins my daily
-subjective log, and tells me what's actually driving my energy.**
+**An n=1 self-experiment toolkit: pull my Garmin data, join how I actually felt
+each day, and find what's really driving my energy.** (The "ETL" is the
+plumbing — extract from Garmin, store in SQLite — but the point is the analysis
+on top.)
 
-It started as an n=1 self-experiment: I feel tired in ways my watch's "recovery"
+It started from a simple frustration: I feel tired in ways my watch's "recovery"
 scores don't explain, so I wanted to test that directly instead of guessing. The
 tool pulls daily wellness metrics and workouts from Garmin Connect, normalizes
 them into SQLite, joins a Google Form mood/energy log on date, and runs lagged
@@ -75,6 +77,22 @@ export GARMIN_EMAIL="you@example.com"
 export GARMIN_PASSWORD="..."
 uv run garmin-health-etl extract --start 2026-01-01 --end 2026-03-31 --output export.json
 ```
+
+**Auth & rate limits.** Garmin rate-limits its login endpoint by IP and returns
+HTTP 429 if you log in too often (e.g. running `extract` repeatedly). Log in once
+and cache the token so later runs reuse the session instead of re-authenticating:
+
+```bash
+# one-time: seed the token cache (run interactively if your account uses 2FA)
+uv run python -c "import garth; garth.login('you@example.com','PASSWORD'); garth.save('$HOME/.garminconnect')"
+
+# then point the extractor at the cache — no fresh login, no 429
+export GARMINTOKENS="$HOME/.garminconnect"
+uv run garmin-health-etl extract --start 2026-01-01 --end 2026-03-31 --output export.json
+```
+
+If you do hit a 429, wait ~15–60 minutes before retrying; repeated attempts reset
+the cooldown.
 
 ### `import-json` — load normalized JSON/NDJSON
 
