@@ -4,10 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "garmin-health-etl"
-version = "0.1.0"
-description = "CLI for importing, storing, and exporting Garmin health data"
-requires-python = ">=3.7"
+version = "0.2.0"
+description = "Pull, store, join and analyze personal Garmin health data (n=1 self-experiment toolkit)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
 dependencies = []
+
+[project.optional-dependencies]
+# Built-in Garmin Connect extractor (`extract` command).
+garmin = ["garminconnect>=0.2.25"]
+# Analysis & insights (`analyze` command).
+analysis = ["pandas>=2.0", "numpy>=1.24", "matplotlib>=3.7"]
+# Everything plus dev tooling.
+dev = [
+    "garminconnect>=0.2.25",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "ruff>=0.5",
+]
 
 [project.scripts]
 garmin-health-etl = "garmin_health_etl.cli:main"
@@ -20,3 +36,11 @@ where = ["src"]
 
 [tool.uv]
 package = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B"]
+ignore = ["E501"]
