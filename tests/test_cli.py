@@ -6,7 +6,6 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
@@ -134,6 +133,65 @@ class CLITests(unittest.TestCase):
                 output_path.read_text(encoding="utf-8"),
             )
             self.assertIn("Saved upstream stdout", stdout_buffer.getvalue())
+
+
+class NewCommandTests(unittest.TestCase):
+    def test_generate_import_export_csv_and_tracker(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            db = tmp / "h.db"
+
+            # generate-sample
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    0,
+                    cli.main(
+                        ["generate-sample", "--output-dir", str(tmp), "--days", "30"]
+                    ),
+                )
+            self.assertTrue((tmp / "sample_garmin.json").exists())
+            self.assertTrue((tmp / "sample_tracker.csv").exists())
+
+            # import-json (garmin_data + activities)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                cli.main(
+                    [
+                        "import-json",
+                        "--input",
+                        str(tmp / "sample_garmin.json"),
+                        "--db",
+                        str(db),
+                        "--source",
+                        "sample",
+                    ]
+                )
+            self.assertIn("Imported 30 garmin_data", buf.getvalue())
+
+            # import-tracker (manual_tracking)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                cli.main(
+                    [
+                        "import-tracker",
+                        "--input",
+                        str(tmp / "sample_tracker.csv"),
+                        "--db",
+                        str(db),
+                    ]
+                )
+            self.assertIn("manual_tracking rows", buf.getvalue())
+
+            # export-csv (full table)
+            out_csv = tmp / "full.csv"
+            with redirect_stdout(io.StringIO()):
+                cli.main(
+                    ["export-csv", "--db", str(db), "--output", str(out_csv)]
+                )
+            self.assertTrue(out_csv.exists())
+            header = out_csv.read_text(encoding="utf-8").splitlines()[0]
+            self.assertIn("hrv_last_night", header)
+            self.assertIn("stress_avg", header)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,8 @@ spec cannot silently drift from the database.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields as dataclass_fields
+from dataclasses import dataclass
+from dataclasses import fields as dataclass_fields
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 

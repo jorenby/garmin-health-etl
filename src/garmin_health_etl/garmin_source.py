@@ -60,8 +60,10 @@ def _ms_to_hhmm(value: Any) -> Optional[str]:
     if value is None:
         return None
     try:
-        # Local timestamps are wall-clock encoded as if UTC, so use utc here.
-        return _dt.datetime.utcfromtimestamp(float(value) / 1000.0).strftime("%H:%M")
+        # Local timestamps are wall-clock encoded as if UTC, so read them in UTC.
+        return _dt.datetime.fromtimestamp(
+            float(value) / 1000.0, tz=_dt.timezone.utc
+        ).strftime("%H:%M")
     except (TypeError, ValueError, OSError):
         return None
 

@@ -13,3 +13,16 @@ build/
 *.sqlite3
 *.log
 *.psv
+
+# Local virtualenvs / Garmin auth (never commit credentials or tokens)
+garmin_env/
+.garmintokens/
+.garth/
+*.token
+
+# Real data exports stay local; only synthetic data under examples/ is tracked.
+# Root-anchored so the synthetic copies in examples/ are never caught.
+/data/
+/report.md
+/charts/
+/sample/
